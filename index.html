@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Dice</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    body {
+        position: relative;
+        font-family: Arial, "Microsoft JhengHei", sans-serif;
+
+        /* 背景圖片 */
+        background-image: url("back.png");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+
+    /* ========================================
+       遊戲主要區域
+       ======================================== */
+
+    .game {
+        position: absolute;
+        inset: 0;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        width: 100%;
+        height: 100%;
+    }
+
+
+    /* ========================================
+       右上角貓咪 GIF
+       ======================================== */
+
+    .cat {
+        position: fixed;
+
+        top: 30px;
+        right: 200px;
+
+        width: min(430px, 30vw);
+        max-height: 48vh;
+
+        object-fit: contain;
+
+        z-index: 10;
+
+        pointer-events: none;
+
+        filter:
+            drop-shadow(
+                0 8px 10px
+                rgba(90, 60, 40, 0.12)
+            );
+    }
+
+
+    /* ========================================
+       Roll 投擲按鈕
+       ======================================== */
+
+    .roll-button {
+        position: fixed;
+
+        left: 50%;
+        bottom: 70px;
+
+        transform: translateX(-50%);
+
+        width: min(260px, 32vw);
+
+        cursor: pointer;
+
+        z-index: 40;
+
+        transition:
+            transform 0.12s ease,
+            filter 0.12s ease;
+
+        filter:
+            drop-shadow(
+                0 7px 5px
+                rgba(90, 60, 40, 0.20)
+            );
+    }
+
+
+    .roll-button:hover {
+        transform:
+            translateX(-50%)
+            scale(1.06);
+
+        filter:
+            brightness(1.05)
+            drop-shadow(
+                0 8px 6px
+                rgba(90, 60, 40, 0.22)
+            );
+    }
+
+
+    .roll-button:active {
+        transform:
+            translateX(-50%)
+            scale(0.94);
+    }
+
+
+    /* ========================================
+       骰子區域
+       ======================================== */
+
+    .dice-area {
+        position: fixed;
+        inset: 0;
+
+        pointer-events: none;
+
+        z-index: 20;
+    }
+
+
+    /* ========================================
+       骰子本體
+       ======================================== */
+
+    .dice {
+        --size: 130px;
+
+        position: absolute;
+
+        left: 50%;
+        top: 43%;
+
+        width: var(--size);
+        height: var(--size);
+
+        transform:
+            translate(-50%, -50%);
+
+        background:
+            linear-gradient(
+                145deg,
+                #fffdf5 0%,
+                #fff9e8 55%,
+                #f1dfc4 100%
+            );
+
+        border:
+            5px solid
+            #38251e;
+
+        border-radius: 26px;
+
+        box-shadow:
+            inset 8px 8px 12px
+            rgba(255,255,255,0.9),
+
+            inset -7px -7px 10px
+            rgba(160,120,80,0.15),
+
+            0 12px 18px
+            rgba(80,50,30,0.22);
+
+        opacity: 0;
+    }
+
+
+    /* ========================================
+       骰子點
+       ======================================== */
+
+    .pip {
+        position: absolute;
+
+        width: 20%;
+        height: 20%;
+
+        border-radius: 50%;
+
+        background: #302724;
+
+        transform:
+            translate(-50%, -50%);
+
+        box-shadow:
+            inset 2px 2px 3px
+            rgba(255,255,255,0.18),
+
+            inset -2px -2px 3px
+            rgba(0,0,0,0.15);
+    }
+
+
+    /* 只有骰到 1 時使用粉紅色 */
+
+    .dice[data-value="1"] .pip {
+        background: #ef7188;
+    }
+
+
+    /* ========================================
+       骰點位置
+       ======================================== */
+
+    .tl {
+        left: 25%;
+        top: 25%;
+    }
+
+    .tc {
+        left: 50%;
+        top: 25%;
+    }
+
+    .tr {
+        left: 75%;
+        top: 25%;
+    }
+
+    .ml {
+        left: 25%;
+        top: 50%;
+    }
+
+    .mc {
+        left: 50%;
+        top: 50%;
+    }
+
+    .mr {
+        left: 75%;
+        top: 50%;
+    }
+
+    .bl {
+        left: 25%;
+        top: 75%;
+    }
+
+    .bc {
+        left: 50%;
+        top: 75%;
+    }
+
+    .br {
+        left: 75%;
+        top: 75%;
+    }
+
+
+    /* ========================================
+       骰子投擲動畫
+       ======================================== */
+
+    .dice.rolling {
+        opacity: 1;
+
+        animation:
+            diceJump
+            0.95s
+            cubic-bezier(.22,.75,.32,1),
+
+            diceShake
+            0.18s
+            linear
+            5;
+    }
+
+
+    @keyframes diceJump {
+
+        0% {
+            left: 50%;
+            top: 78%;
+
+            transform:
+                translate(-50%, -50%)
+                rotate(-40deg)
+                scale(0.65);
+        }
+
+
+        20% {
+            left: 43%;
+            top: 53%;
+
+            transform:
+                translate(-50%, -50%)
+                rotate(90deg)
+                scale(1);
+        }
+
+
+        42% {
+            left: 55%;
+            top: 31%;
+
+            transform:
+                translate(-50%, -50%)
+                rotate(220deg)
+                scale(1.12);
+        }
+
+
+        62% {
+            left: 47%;
+            top: 46%;
+
+            transform:
+                translate(-50%, -50%)
+                rotate(390deg)
+                scale(0.96);
+        }
+
+
+        78% {
+            left: 52%;
+            top: 37%;
+
+            transform:
+                translate(-50%, -50%)
+                rotate(500deg)
+                scale(1.04);
+        }
+
+
+        100% {
+            left: 50%;
+            top: 43%;
+
+            transform:
+                translate(-50%, -50%)
+                rotate(540deg)
+                scale(1);
+        }
+    }
+
+
+    /* 左右震動 */
+
+    @keyframes diceShake {
+
+        0% {
+            margin-left: -5px;
+        }
+
+        50% {
+            margin-left: 5px;
+        }
+
+        100% {
+            margin-left: 0;
+        }
+    }
+
+
+    /* ========================================
+       最終骰子
+       ======================================== */
+
+    .dice.result {
+        opacity: 1;
+
+        left: 50%;
+        top: 43%;
+
+        transform:
+            translate(-50%, -50%)
+            rotate(0deg)
+            scale(1);
+
+        animation:
+            resultBounce
+            0.42s
+            ease;
+    }
+
+
+    @keyframes resultBounce {
+
+        0% {
+            transform:
+                translate(-50%, -50%)
+                scale(0.75);
+        }
+
+        55% {
+            transform:
+                translate(-50%, -50%)
+                scale(1.18);
+        }
+
+        75% {
+            transform:
+                translate(-50%, -50%)
+                scale(0.94);
+        }
+
+        100% {
+            transform:
+                translate(-50%, -50%)
+                scale(1);
+        }
+    }
+
+
+    /* ========================================
+       最終結果數字
+       ======================================== */
+
+    .result-number {
+        position: fixed;
+
+        left: 50%;
+        top: calc(43% + 105px);
+
+        transform:
+            translateX(-50%);
+
+        z-index: 30;
+
+        /* 放大結果文字 */
+        font-size: 90px;
+
+        font-weight: 900;
+
+        line-height: 1;
+
+        color: #ef7188;
+
+        /* 白色外框 */
+        -webkit-text-stroke:
+            9px white;
+
+        paint-order:
+            stroke fill;
+
+        filter:
+            drop-shadow(
+                0 6px 0
+                #d8ad75
+            )
+
+            drop-shadow(
+                0 10px 8px
+                rgba(80,50,30,0.18)
+            );
+
+        opacity: 0;
+
+        pointer-events: none;
+    }
+
+
+    .result-number.show {
+        opacity: 1;
+
+        animation:
+            numberPop
+            0.4s
+            ease;
+    }
+
+
+    @keyframes numberPop {
+
+        0% {
+            transform:
+                translateX(-50%)
+                scale(0);
+        }
+
+        65% {
+            transform:
+                translateX(-50%)
+                scale(1.25);
+        }
+
+        82% {
+            transform:
+                translateX(-50%)
+                scale(0.92);
+        }
+
+        100% {
+            transform:
+                translateX(-50%)
+                scale(1);
+        }
+    }
+
+
+    /* ========================================
+       手機版
+       ======================================== */
+
+    @media (max-width: 700px) {
+
+        .cat {
+            width: 45vw;
+
+            top: 15px;
+            right: 15px;
+        }
+
+
+        .roll-button {
+            width: 45vw;
+
+            bottom: 45px;
+        }
+
+
+        .dice {
+            --size: 100px;
+        }
+
+
+        .result-number {
+            font-size: 68px;
+
+            top:
+                calc(43% + 90px);
+
+            -webkit-text-stroke:
+                7px white;
+        }
+    }
+
+</style>
+</head>
+
+
+<body>
+
+
+<!-- ========================================
+     貓咪 GIF
+     ======================================== -->
+
+<img
+    src="cat.gif"
+    class="cat"
+    alt=""
+    draggable="false"
+>
+
+
+<!-- ========================================
+     投擲按鈕
+     ======================================== -->
+
+<div class="game">
+
+    <img
+        src="roll.png"
+        id="rollButton"
+        class="roll-button"
+        alt="Roll"
+        draggable="false"
+    >
+
+</div>
+
+
+<!-- ========================================
+     骰子
+     ======================================== -->
+
+<div class="dice-area">
+
+    <div
+        id="dice"
+        class="dice"
+        data-value="1">
+    </div>
+
+</div>
+
+
+<!-- ========================================
+     結果數字
+     ======================================== -->
+
+<div
+    id="resultNumber"
+    class="result-number">
+</div>
+
+
+
+<script>
+
+/* ==========================================
+   元素
+   ========================================== */
+
+const rollButton =
+    document.getElementById("rollButton");
+
+const dice =
+    document.getElementById("dice");
+
+const resultNumber =
+    document.getElementById("resultNumber");
+
+
+let rolling = false;
+
+
+/* ==========================================
+   骰子點數配置
+   ========================================== */
+
+const diceFaces = {
+
+    1: [
+        "mc"
+    ],
+
+    2: [
+        "tl",
+        "br"
+    ],
+
+    3: [
+        "tl",
+        "mc",
+        "br"
+    ],
+
+    4: [
+        "tl",
+        "tr",
+        "bl",
+        "br"
+    ],
+
+    5: [
+        "tl",
+        "tr",
+        "mc",
+        "bl",
+        "br"
+    ],
+
+    6: [
+        "tl",
+        "tr",
+        "ml",
+        "mr",
+        "bl",
+        "br"
+    ]
+
+};
+
+
+/* ==========================================
+   顯示骰子點數
+   ========================================== */
+
+function showDice(value) {
+
+    dice.innerHTML = "";
+
+    dice.dataset.value = value;
+
+
+    diceFaces[value].forEach(position => {
+
+        const pip =
+            document.createElement("div");
+
+
+        pip.className =
+            "pip " + position;
+
+
+        dice.appendChild(pip);
+
+    });
+
+}
+
+
+/* ==========================================
+   投擲骰子
+   ========================================== */
+
+function rollDice() {
+
+
+    /* 防止動畫進行中重複觸發 */
+
+    if (rolling) {
+        return;
+    }
+
+
+    rolling = true;
+
+
+    /* --------------------------------------
+       清除上一局結果
+       -------------------------------------- */
+
+    dice.classList.remove(
+        "result"
+    );
+
+    dice.classList.remove(
+        "rolling"
+    );
+
+
+    resultNumber.classList.remove(
+        "show"
+    );
+
+
+    resultNumber.textContent = "";
+
+
+    /* 強制瀏覽器刷新動畫 */
+
+    void dice.offsetWidth;
+
+
+    /* 開始投擲 */
+
+    dice.classList.add(
+        "rolling"
+    );
+
+
+    /* --------------------------------------
+       滾動期間快速變換點數
+       -------------------------------------- */
+
+    const shuffle =
+        setInterval(() => {
+
+
+            const randomFace =
+                Math.floor(
+                    Math.random() * 6
+                ) + 1;
+
+
+            showDice(
+                randomFace
+            );
+
+
+        }, 90);
+
+
+    /* --------------------------------------
+       約 0.95 秒後停止
+       -------------------------------------- */
+
+    setTimeout(() => {
+
+
+        clearInterval(
+            shuffle
+        );
+
+
+        /* 產生 1～6 */
+
+        const result =
+            Math.floor(
+                Math.random() * 6
+            ) + 1;
+
+
+        /* 顯示最終骰子 */
+
+        showDice(
+            result
+        );
+
+
+        dice.classList.remove(
+            "rolling"
+        );
+
+
+        void dice.offsetWidth;
+
+
+        dice.classList.add(
+            "result"
+        );
+
+
+        /* ----------------------------------
+           顯示大型結果數字
+           ---------------------------------- */
+
+        resultNumber.textContent =
+            result;
+
+
+        void resultNumber.offsetWidth;
+
+
+        resultNumber.classList.add(
+            "show"
+        );
+
+
+        /* 可以再次投擲 */
+
+        rolling = false;
+
+
+    }, 950);
+
+}
+
+
+/* ==========================================
+   點擊 Roll
+   ========================================== */
+
+rollButton.addEventListener(
+    "click",
+    rollDice
+);
+
+
+/* ==========================================
+   預先建立骰子
+   但未投擲前保持隱藏
+   ========================================== */
+
+showDice(1);
+
+</script>
+
+
+</body>
+</html>
